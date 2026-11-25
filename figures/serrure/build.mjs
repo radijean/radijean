@@ -167,3 +167,30 @@ const body =
 const name = theme === "light" ? "serrure-light.html" : "serrure.html";
 writeFileSync(join(HERE, name), k.pageHtml({ title: "Serrure à goupilles", theme, body, script: kitScript() + live }).replace('<html lang="en">', '<html lang="fr">'));
 console.log("wrote", name);
+
+// A theme-aware page for publishing as an Artifact: follows the viewer's light or dark setting.
+if (process.argv.includes("--artifact")) {
+  const themeScript = `
+const root = document.documentElement, wrap = document.querySelector(".iso"), dark = matchMedia("(prefers-color-scheme: dark)");
+const pick = () => { const t = root.getAttribute("data-theme"); wrap.setAttribute("data-theme", t === "dark" || t === "light" ? t : dark.matches ? "dark" : "light"); };
+pick(); dark.addEventListener("change", pick); new MutationObserver(pick).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+`;
+  const page = `<title>Serrure à goupilles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--page:#f2f2ef;--ink:#57575a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#0b0b0b;--ink:#a3a3a3;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#0b0b0b;--ink:#a3a3a3;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.lk-wrap{background:var(--anatomy-page);padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:40px 64px;min-height:100%}
+.iso-page{width:min(680px,100%);margin:0 auto}
+${k.ISO_CSS}
+</style>
+<div class="iso lk-wrap" data-theme="light"><main class="iso-page">${body}</main></div>
+<script>${themeScript}</script>
+<script type="module">${(kitScript() + live).replace(/<\/(script)/gi, "<\\/$1")}</script>
+`;
+  writeFileSync(join(HERE, "serrure-artifact.html"), page);
+  console.log("wrote serrure-artifact.html");
+}
